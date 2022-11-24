@@ -72,22 +72,22 @@ void loop() {
   while(!SLEEP){
     // check if new ir transmission has been received
     if (IrReceiver.decode()){ 
-      if (IrReceiver.decodedIRData.command != PREV_CMD){       
+      if (IrReceiver.decodedIRData.command != PREV_CMD && IrReceiver.decodedIRData.command != 0){       
         int ir_cmd = IrReceiver.decodedIRData.command;
         Serial.println(ir_cmd);  // debug ir codes
         IrReceiver.resume();
 
         // define profiles here
-        if (ir_cmd == 18) setColor(0,0,0); // lights off, implement sleep mode later
-        else if(ir_cmd == 0){
+        if (ir_cmd == 2828) setColor(0,0,0); // lights off, implement sleep mode later
+        else if(ir_cmd == 18){
           while(!IrReceiver.decode()){
             partyMode(); 
           }
         }
-        else if(ir_cmd == 1) setColor(255,0,0);     // red
-        else if(ir_cmd == 2) setColor(0,255,0);     // green
-        else if(ir_cmd == 3) setColor(0,0,255);     // blue
-        else if(ir_cmd == 4) setColor(255,255,255); // white
+        else if(ir_cmd == 69) setColor(255,0,0);     // red
+        else if(ir_cmd == 88) setColor(0,255,0);     // green
+        else if(ir_cmd == 89) setColor(0,0,255);     // blue
+        else if(ir_cmd == 68) setColor(255,255,255); // white
         /*
         else if(ir_cmd == 5) setColor();
         else if(ir_cmd == 6) setColor();
