@@ -34,6 +34,8 @@ void setup() {
     pinMode(pin, OUTPUT);
   }
 
+  // load saved profile from EEPROM
+
   // init ir decoder with led feedback on
   IrReceiver.begin(IRPIN, 1);
 
@@ -55,7 +57,7 @@ void delayMillis(const unsigned long t){
 
 // function for controlling led brightness, led param values 0-255
 // last param for saving to EEPROM
-void setColor(const byte r, const byte g, const byte b, bool save){
+void setColor(const byte r, const byte g, const byte b, int cmd){
   analogWrite(RPIN, r);
   RSTATE = r;
   analogWrite(GPIN, g);
@@ -63,32 +65,24 @@ void setColor(const byte r, const byte g, const byte b, bool save){
   analogWrite(BPIN, b);
   BSTATE = b;
 
-  // save to EEPROM (optional)
-  if (save){
-      byte address = 0;      
-      EEPROM.write(address, r);
-      address++;
-      EEPROM.write(address, g);
-      address++;
-      EEPROM.write(address, b);
-      address++;
-  }
+  // save to EEPROM
+  EEPROM.write(0,cmd);
 
   return;
 }
 
 void saveColor();
 
-void partyMode(){
-  setColor(255,50,50,false);
+void partyMode(int cmd){
+  setColor(255,50,50,cmd);
   delayMillis(100);
-  setColor(50,255,50,false);
+  setColor(50,255,50,cmd);
   delayMillis(100);
-  setColor(50,50,255,false);
+  setColor(50,50,255,cmd);
   delayMillis(100);
-  setColor(255,255,255,false);
+  setColor(255,255,255,cmd);
   delayMillis(100);
-  setColor(50,50,50,false);
+  setColor(50,50,50,cmd);
   delayMillis(100);
   return;
 }
@@ -103,16 +97,16 @@ void loop() {
         IrReceiver.resume();
 
         // define profiles here
-        if (ir_cmd == 64) setColor(0,0,0,false); // lights off, implement sleep mode later
+        if (ir_cmd == 64) setColor(0,0,0,ir_cmd); // lights off, implement sleep mode later
         else if(ir_cmd == 18){
           while(!IrReceiver.decode()){
-            partyMode(); 
+            partyMode(ir_cmd); 
           }
         }
-        else if(ir_cmd == 69) setColor(255,0,0,true);     // red
-        else if(ir_cmd == 88) setColor(0,255,0,true);     // green
-        else if(ir_cmd == 89) setColor(0,0,255,true);     // blue
-        else if(ir_cmd == 68) setColor(255,255,255,true); // white
+        else if(ir_cmd == 69) setColor(255,0,0,ir_cmd);     // red
+        else if(ir_cmd == 88) setColor(0,255,0,ir_cmd);     // green
+        else if(ir_cmd == 89) setColor(0,0,255,ir_cmd);     // blue
+        else if(ir_cmd == 68) setColor(255,255,255,ir_cmd); // white
         /*
         else if(ir_cmd == 5) setColor();
         else if(ir_cmd == 6) setColor();
