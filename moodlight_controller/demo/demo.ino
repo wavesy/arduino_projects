@@ -7,7 +7,12 @@
 volatile bool SLEEP = 0;  // on/off
 
 // store previous ir transmission
-int PREV_CMD = 0;
+byte PREV_CMD = 0;
+
+// store led states
+byte RSTATE = 0;
+byte GSTATE = 0;
+byte BSTATE = 0;
 
 // IO pins
 const int RPIN = 9, 
@@ -19,8 +24,8 @@ const int RPIN = 9,
 
 
 void setup() {
-  const int in_pins [] = {GATEPIN, IRPIN, AUDIOPIN};
-  const int out_pins [] = {RPIN, GPIN, BPIN};
+  const byte in_pins [] = {GATEPIN, IRPIN, AUDIOPIN};
+  const byte out_pins [] = {RPIN, GPIN, BPIN};
   for (auto pin : in_pins){
     pinMode(pin, INPUT);
   } 
@@ -48,23 +53,26 @@ void delayMillis(const unsigned long t){
 }
 
 // function for controlling led brightness, param values 0-255
-void setColor(const int r, const int g, const int b){
+void setColor(const byte r, const byte g, const byte b){
   analogWrite(RPIN, r);
+  RSTATE = r;
   analogWrite(GPIN, g);
+  GSTATE = g;
   analogWrite(BPIN, b);
+  BSTATE = b;
 }
 
 void partyMode(){
   setColor(255,50,50);
-  delayMillis(1000);
+  delayMillis(100);
   setColor(50,255,50);
-  delayMillis(1000);
+  delayMillis(100);
   setColor(50,50,255);
-  delayMillis(1000);
+  delayMillis(100);
   setColor(255,255,255);
-  delayMillis(1000);
+  delayMillis(100);
   setColor(50,50,50);
-  delayMillis(1000);
+  delayMillis(100);
   return;
 }
 
@@ -78,7 +86,7 @@ void loop() {
         IrReceiver.resume();
 
         // define profiles here
-        if (ir_cmd == 2828) setColor(0,0,0); // lights off, implement sleep mode later
+        if (ir_cmd == 64) setColor(0,0,0); // lights off, implement sleep mode later
         else if(ir_cmd == 18){
           while(!IrReceiver.decode()){
             partyMode(); 
