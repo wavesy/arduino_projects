@@ -71,20 +71,34 @@ void setColor(const byte r, const byte g, const byte b, int cmd){
   return;
 }
 
-void saveColor();
-
-void partyMode(int cmd){
-  setColor(255,50,50,cmd);
-  delayMillis(100);
-  setColor(50,255,50,cmd);
-  delayMillis(100);
-  setColor(50,50,255,cmd);
-  delayMillis(100);
-  setColor(255,255,255,cmd);
-  delayMillis(100);
-  setColor(50,50,50,cmd);
-  delayMillis(100);
-  return;
+// sets color profile (either static or a sequence)
+void setProfile(int cmd){
+  // DEFINE PROFILES HERE
+        if (cmd == 64) setColor(0,0,0,cmd); // lights off, implement sleep mode later
+        
+        else if(cmd == 18){
+          while(!IrReceiver.decode()){
+            setColor(255,50,50,cmd);
+            delayMillis(100);
+            setColor(50,255,50,cmd);
+            delayMillis(100);
+            setColor(50,50,255,cmd);
+            delayMillis(100);
+            setColor(255,255,255,cmd);
+            delayMillis(100);
+            setColor(50,50,50,cmd);
+            delayMillis(100);
+          }
+        }
+        
+        else if(cmd == 69) setColor(255,0,0,cmd);     // red
+        
+        else if(cmd == 88) setColor(0,255,0,cmd);     // green
+        
+        else if(cmd == 89) setColor(0,0,255,cmd);     // blue
+        
+        else if(cmd == 68) setColor(255,255,255,cmd); // white
+        return;
 }
 
 void loop() {
@@ -95,25 +109,7 @@ void loop() {
         int ir_cmd = IrReceiver.decodedIRData.command;
         Serial.println(ir_cmd);  // debug ir codes
         IrReceiver.resume();
-
-        // define profiles here
-        if (ir_cmd == 64) setColor(0,0,0,ir_cmd); // lights off, implement sleep mode later
-        else if(ir_cmd == 18){
-          while(!IrReceiver.decode()){
-            partyMode(ir_cmd); 
-          }
-        }
-        else if(ir_cmd == 69) setColor(255,0,0,ir_cmd);     // red
-        else if(ir_cmd == 88) setColor(0,255,0,ir_cmd);     // green
-        else if(ir_cmd == 89) setColor(0,0,255,ir_cmd);     // blue
-        else if(ir_cmd == 68) setColor(255,255,255,ir_cmd); // white
-        /*
-        else if(ir_cmd == 5) setColor();
-        else if(ir_cmd == 6) setColor();
-        else if(ir_cmd == 7) setColor();
-        else if(ir_cmd == 8) setColor();
-        else if(ir_cmd == 9) setColor();
-        */
+        setProfile(ir_cmd);
         PREV_CMD = ir_cmd;
       }
       else{
