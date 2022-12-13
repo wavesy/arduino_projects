@@ -1,17 +1,7 @@
 //#define DEBUG
 #define IR_USE_AVR_TIMER* 1
-#define SCREEN_WIDTH 128 // OLED display width, in pixels
-#define SCREEN_HEIGHT 64 // OLED display height, in pixels
-#include <IRremote.hpp>
-#include <EEPROM.h>
-#include <Wire.h>
-#include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
-
-
-// Declaration for an SSD1306 display connected to I2C (SDA, SCL pins)
-Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
-//*** Screen setup end
+#include <IRremote.hpp>;
+#include <EEPROM.h>;
 
 
 // interrupt flags
@@ -33,6 +23,24 @@ const byte RPIN = 9,
           IRPIN = 4,
           AUDIOPIN = A5;
 
+
+void setup() {
+  const byte in_pins [] = {GATEPIN, IRPIN, AUDIOPIN};
+  const byte out_pins [] = {RPIN, GPIN, BPIN};
+  for (auto pin : in_pins){
+    pinMode(pin, INPUT);
+  } 
+  for (auto pin : out_pins){
+    pinMode(pin, OUTPUT);
+  }
+
+  // load saved profile from EEPROM
+
+  // init ir decoder with led feedback on
+  IrReceiver.begin(IRPIN, 1);
+
+  Serial.begin(9600);
+}
 
 // non-blocking delay function using millis()
 void delayMillis(const unsigned long t){
@@ -92,34 +100,13 @@ void setProfile(int cmd){
           }
         }
         
-        else if(cmd == 88){
-          setColor(255,0,0,cmd);     // red
-          screenSetup();
-          display.println("RED");
-          display.display();          
-        } 
+        else if(cmd == 69) setColor(255,0,0,cmd);     // red
         
-        else if(cmd == 89){
-          setColor(0,255,0,cmd);     // green
-          screenSetup();
-          display.println("GREEN");
-          display.display();
-        }  
-
-        else if(cmd == 69){
-          setColor(0,0,255,cmd);     // blue
-          screenSetup();
-          display.println("BLUE");
-          display.display();
-        }
-
-        else if(cmd == 68){
-          setColor(255,255,255,cmd); // white
-          screenSetup();
-          display.println("WHITE");
-          display.display();
-        }
+        else if(cmd == 88) setColor(0,255,0,cmd);     // green
         
+        else if(cmd == 89) setColor(0,0,255,cmd);     // blue
+        
+        else if(cmd == 68) setColor(255,255,255,cmd); // white
         return;
 }
 
@@ -166,6 +153,7 @@ void setup() {
   delay(2000);
   setProfile(stored_cmd);
 }
+
 
 void loop() {
   while(!SLEEP){
