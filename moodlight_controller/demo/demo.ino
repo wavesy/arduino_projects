@@ -14,14 +14,15 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 
 // interrupt flags
 volatile bool SLEEP = 0;  // on/off
+volatile bool SOUND_DETECTED = 0;  // sound detected
 
 // store previous ir transmission
 byte PREV_CMD = 0;
 
-// store led states
-byte RSTATE = 0;
-byte GSTATE = 0;
-byte BSTATE = 0;
+// store detected sound to recognize second clap
+long CURRENT_NOISE_TIME = 0;
+long LAST_POWER_TOGGLE = 0;
+
 
 // IO pins
 const byte RPIN = 9, 
@@ -29,7 +30,8 @@ const byte RPIN = 9,
           BPIN = 11,
           GATEPIN = 2,
           IRPIN = 4,
-          AUDIOPIN = A5;
+          AUDIOPIN = A5,
+          INTERRUPTPIN = 2;
 
 
 // non-blocking delay function using millis()
@@ -49,11 +51,8 @@ void delayMillis(const unsigned long t){
 // last param for saving to EEPROM
 void setColor(const byte r, const byte g, const byte b, int cmd){
   analogWrite(RPIN, r);
-  RSTATE = r;
   analogWrite(GPIN, g);
-  GSTATE = g;
   analogWrite(BPIN, b);
-  BSTATE = b;
 
   // break cmd into bytes, save to EEPROM
   byte byte1 = (cmd >> 8) & 0xFF;
@@ -132,8 +131,12 @@ void screenSetup(){
   return;
 }
 
+void soundISR(){
+  SOUND_DETECTED = 1;
+}
+
 void setup() {
-  const byte in_pins [] = {GATEPIN, IRPIN, AUDIOPIN};
+  const byte in_pins [] = {GATEPIN, IRPIN, AUDIOPIN, INTERRUPTPIN};
   const byte out_pins [] = {RPIN, GPIN, BPIN};
   for (auto pin : in_pins){
     pinMode(pin, INPUT);
@@ -144,6 +147,9 @@ void setup() {
 
   // init ir decoder with led feedback on
   IrReceiver.begin(IRPIN, 1);
+
+  // init interrupt routine for sound detection
+  attachInterrupt(digitalPinToInterrupt(INTERRUPTPIN), soundISR, RISING);
 
   // init display
   if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Address 0x3D for 128x64
@@ -170,6 +176,15 @@ void setup() {
 
 void loop() {
   while(!SLEEP){
+    if (SOUND_DETECTED){
+      CURRENT_NOISE_TIME = millis();
+      if (CURRENT_NOISE_TIME > LAST_POWER_TOGGLE + 200){ // debounce
+        // TODO: implement sleep
+        LAST_POWER_TOGGLE = millis();
+        Serial.println("toggle power");
+      }
+      SOUND_DETECTED = 0;
+    }
     // check if new ir transmission has been received
     if (IrReceiver.decode()){ 
       if (IrReceiver.decodedIRData.command != PREV_CMD && IrReceiver.decodedIRData.command != 0){       
