@@ -57,8 +57,11 @@ void setColor(const byte r, const byte g, const byte b, int cmd){
   analogWrite(BPIN, b);
   BSTATE = b;
 
-  // save to EEPROM
-  EEPROM.write(0,cmd);
+  // break cmd into bytes, save to EEPROM
+  byte byte1 = (cmd >> 8) & 0xFF;
+  byte byte2 = cmd & 0xFF;
+  EEPROM.write(0,byte1);
+  EEPROM.write(1,byte2);
 
   return;
 }
@@ -66,20 +69,26 @@ void setColor(const byte r, const byte g, const byte b, int cmd){
 // sets color profile (either static or a sequence)
 void setProfile(int cmd){
   // DEFINE PROFILES HERE
-        if (cmd == 64) setColor(0,0,0,cmd); // lights off, implement sleep mode later
+        if (cmd == 64){
+          setColor(0,0,0,cmd); // lights off, implement sleep mode later
+          screenSetup();
+        }
         
         else if(cmd == 18){
+          /*screenSetup();
+          display.println("PARTY");
+          display.display();*/           
           while(!IrReceiver.decode()){
             setColor(255,50,50,cmd);
-            delayMillis(100);
+            //delayMillis(1000);
             setColor(50,255,50,cmd);
-            delayMillis(100);
+            //delayMillis(1000);
             setColor(50,50,255,cmd);
-            delayMillis(100);
+            //delayMillis(1000);
             setColor(255,255,255,cmd);
-            delayMillis(100);
+            //delayMillis(1000);
             setColor(50,50,50,cmd);
-            delayMillis(100);
+            //delayMillis(1000);
           }
         }
         
@@ -119,7 +128,7 @@ void screenSetup(){
   display.clearDisplay();
   display.setTextSize(3);
   display.setCursor(0, 10);
-  display.setTextColor(WHITE);
+  display.display();
   return;
 }
 
@@ -133,8 +142,6 @@ void setup() {
     pinMode(pin, OUTPUT);
   }
 
-  // load saved profile from EEPROM
-
   // init ir decoder with led feedback on
   IrReceiver.begin(IRPIN, 1);
 
@@ -143,12 +150,21 @@ void setup() {
     Serial.println(F("SSD1306 allocation failed"));
   }
   screenSetup();
+  display.setTextColor(WHITE);
   display.println("GO NUTS");
   display.fillCircle(64, 50, 8, WHITE); // (x,y,radius, color)
   display.display();
 
   // init serial monitor
   Serial.begin(9600);
+
+  // load saved profile from EEPROM
+  // read two bytes, since cmd is saved as an int
+  int stored_cmd = (EEPROM.read(0) << 8) + EEPROM.read(1);
+  Serial.print("loaded: ");
+  Serial.println(stored_cmd);
+  delay(2000);
+  setProfile(stored_cmd);
 }
 
 void loop() {
