@@ -177,12 +177,8 @@ void goToSleep(){
 
 
 void setup() {
-  for (auto pin : in_pins){
-    pinMode(pin, INPUT);
-  } 
-  for (auto pin : out_pins){
-    pinMode(pin, OUTPUT);
-  }
+  DDRD &= B11110101; // pins 2 and 4 as input pins
+  DDRB |= B00001110; // pins 9,10,11, as output pins
 
   // init ir decoder with led feedback on
   IrReceiver.begin(IRPIN, 1);
