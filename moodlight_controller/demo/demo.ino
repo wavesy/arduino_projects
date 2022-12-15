@@ -1,3 +1,5 @@
+// TODO: wake up from ir
+
 //#define DEBUG
 #define IR_USE_AVR_TIMER* 1
 #include <IRremote.hpp>
@@ -38,12 +40,15 @@ const byte RPIN = 9,
           AUDIOPIN = A5,
           INTERRUPTPIN = 2;
 
+const byte in_pins [] = {GATEPIN, IRPIN, AUDIOPIN, INTERRUPTPIN};
+const byte out_pins [] = {RPIN, GPIN, BPIN};
+
 
 // non-blocking delay function using millis()
 void delayMillis(const unsigned long t){
   const unsigned long start = millis();
   while(millis() - start < t){
-    // check for incoming transmission
+    // check for incoming transmission  
     if (IrReceiver.decode()){
       Serial.println("Party's over");
       break;
@@ -72,10 +77,10 @@ void setColor(const byte r, const byte g, const byte b, int cmd){
 void setProfile(int cmd){
   // DEFINE PROFILES HERE
         if (cmd == 64){
-          setColor(0,0,0,cmd); // lights off, implement sleep mode later
-          screenSetup();
+          goToSleep();
         }
         
+        // HERE BE DRAGONS
         // dont comment this out, it breaks the code for some fucking reason
         else if(cmd == 666){      
           while(!IrReceiver.decode()){
@@ -142,9 +147,36 @@ void pinISR(){
   return;
 }
 
+// call this to reset (wake up)
+void(* resetFunc)(void) = 0;
+
+
+void goToSleep(){
+  // turn off leds
+  for (auto pin : out_pins){
+    analogWrite(pin, 0);
+  }
+  // turn off screen
+  screenSetup();
+  display.print("BYE");
+  display.display();
+  delay(2000);
+  screenSetup();
+
+  set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+  sleep_enable();
+  // go to sleep
+  sleep_mode();
+
+  // wake up
+  SLEEP_STATUS = 0;
+  sleep_disable();
+  resetFunc();
+  return;
+}
+
+
 void setup() {
-  const byte in_pins [] = {GATEPIN, IRPIN, AUDIOPIN, INTERRUPTPIN};
-  const byte out_pins [] = {RPIN, GPIN, BPIN};
   for (auto pin : in_pins){
     pinMode(pin, INPUT);
   } 
@@ -178,37 +210,31 @@ void setup() {
   Serial.println(stored_cmd);
   delay(2000);
   setProfile(stored_cmd);
-}
 
-void goToSleep(){
-  set_sleep_mode(SLEEP_MODE_PWR_DOWN);
-  sleep_enable();
-  // go to sleep
-  sleep_mode();
-  // program continues from here when woken up
-  sleep_disable();
-  //wakeUp();
-  return;
-}
-
-void wakeUp(){
-  return;
+  // reset sleep flag if reset by waking up (might be unneccessary)
+  SLEEP_STATUS = 0;
 }
 
 
-void loop() {
+void loop() {  
   // check if interrupted by sound
   if (INT_BY_SOUND){
+    Serial.println("int by sound");
     CURRENT_NOISE_TIME = millis();
     if (CURRENT_NOISE_TIME > LAST_POWER_TOGGLE + 200){ // debounce
+      SLEEP_STATUS = !SLEEP_STATUS; // toggle power state variable
+      // go to sleep if required, otherwise continue as normal
       if (SLEEP_STATUS){          
         LAST_POWER_TOGGLE = millis();
-        Serial.println("toggle power");
+        Serial.println("sleep");
+        delay(1000);        
         goToSleep();
       }
     }
     INT_BY_SOUND = 0;
   }
+  
+
   // check if new ir transmission has been received
   if (IrReceiver.decode()){ 
     if (IrReceiver.decodedIRData.command != PREV_CMD && IrReceiver.decodedIRData.command != 0){       
