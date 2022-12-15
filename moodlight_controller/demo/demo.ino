@@ -1,10 +1,11 @@
 //#define DEBUG
 #define IR_USE_AVR_TIMER* 1
-#include <IRremote.hpp>;
-#include <EEPROM.h>;
+#include <IRremote.hpp>
+#include <EEPROM.h>
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <avr/sleep.h>
 
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
 #define SCREEN_HEIGHT 64 // OLED display height, in pixels
@@ -14,7 +15,8 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 
 // interrupt flags
 volatile bool SLEEP = 0;  // on/off
-volatile bool SOUND_DETECTED = 0;  // sound detected
+volatile bool INT_BY_SOUND = 0;  // sound detected
+volatile bool INT_BY_IR = 0; // ir receive detected
 
 // store previous ir transmission
 byte PREV_CMD = 0;
@@ -28,7 +30,7 @@ long LAST_POWER_TOGGLE = 0;
 const byte RPIN = 9, 
           GPIN = 10, 
           BPIN = 11,
-          GATEPIN = 2,
+          GATEPIN = 5,
           IRPIN = 4,
           AUDIOPIN = A5,
           INTERRUPTPIN = 2;
@@ -131,8 +133,9 @@ void screenSetup(){
   return;
 }
 
-void soundISR(){
-  SOUND_DETECTED = 1;
+void pinISR(){
+  if(digitalRead(GATEPIN)) INT_BY_SOUND = 1;
+  else INT_BY_IR = 1;
 }
 
 void setup() {
@@ -149,7 +152,7 @@ void setup() {
   IrReceiver.begin(IRPIN, 1);
 
   // init interrupt routine for sound detection
-  attachInterrupt(digitalPinToInterrupt(INTERRUPTPIN), soundISR, RISING);
+  attachInterrupt(digitalPinToInterrupt(INTERRUPTPIN), pinISR, RISING);
 
   // init display
   if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Address 0x3D for 128x64
@@ -173,17 +176,22 @@ void setup() {
   setProfile(stored_cmd);
 }
 
+void sleep(){
+  set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+}
+
 
 void loop() {
   while(!SLEEP){
-    if (SOUND_DETECTED){
+    // check if interrupted by sound
+    if (INT_BY_SOUND){
       CURRENT_NOISE_TIME = millis();
       if (CURRENT_NOISE_TIME > LAST_POWER_TOGGLE + 200){ // debounce
         // TODO: implement sleep
         LAST_POWER_TOGGLE = millis();
         Serial.println("toggle power");
       }
-      SOUND_DETECTED = 0;
+      INT_BY_SOUND = 0;
     }
     // check if new ir transmission has been received
     if (IrReceiver.decode()){ 
