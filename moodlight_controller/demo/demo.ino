@@ -18,6 +18,9 @@ volatile bool SLEEP = 0;  // on/off
 volatile bool INT_BY_SOUND = 0;  // sound detected
 volatile bool INT_BY_IR = 0; // ir receive detected
 
+// sleep
+bool SLEEP_STATUS = 0;
+
 // store previous ir transmission
 byte PREV_CMD = 0;
 
@@ -136,6 +139,7 @@ void screenSetup(){
 void pinISR(){
   if(digitalRead(GATEPIN)) INT_BY_SOUND = 1;
   else INT_BY_IR = 1;
+  return;
 }
 
 void setup() {
@@ -176,35 +180,47 @@ void setup() {
   setProfile(stored_cmd);
 }
 
-void sleep(){
+void goToSleep(){
   set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+  sleep_enable();
+  // go to sleep
+  sleep_mode();
+  // program continues from here when woken up
+  sleep_disable();
+  //wakeUp();
+  return;
+}
+
+void wakeUp(){
+  return;
 }
 
 
 void loop() {
-  while(!SLEEP){
-    // check if interrupted by sound
-    if (INT_BY_SOUND){
-      CURRENT_NOISE_TIME = millis();
-      if (CURRENT_NOISE_TIME > LAST_POWER_TOGGLE + 200){ // debounce
-        // TODO: implement sleep
+  // check if interrupted by sound
+  if (INT_BY_SOUND){
+    CURRENT_NOISE_TIME = millis();
+    if (CURRENT_NOISE_TIME > LAST_POWER_TOGGLE + 200){ // debounce
+      if (SLEEP_STATUS){          
         LAST_POWER_TOGGLE = millis();
         Serial.println("toggle power");
+        goToSleep();
       }
-      INT_BY_SOUND = 0;
     }
-    // check if new ir transmission has been received
-    if (IrReceiver.decode()){ 
-      if (IrReceiver.decodedIRData.command != PREV_CMD && IrReceiver.decodedIRData.command != 0){       
-        int ir_cmd = IrReceiver.decodedIRData.command;
-        Serial.println(ir_cmd);  // debug ir codes
-        IrReceiver.resume();
-        setProfile(ir_cmd);
-        PREV_CMD = ir_cmd;
-      }
-      else{
-        IrReceiver.resume();
-      }
-    }    
+    INT_BY_SOUND = 0;
   }
+  // check if new ir transmission has been received
+  if (IrReceiver.decode()){ 
+    if (IrReceiver.decodedIRData.command != PREV_CMD && IrReceiver.decodedIRData.command != 0){       
+      int ir_cmd = IrReceiver.decodedIRData.command;
+      Serial.println(ir_cmd);  // debug ir codes
+      IrReceiver.resume();
+      setProfile(ir_cmd);
+      PREV_CMD = ir_cmd;
+    }
+    else{
+      IrReceiver.resume();
+    }
+  }    
 }
+
